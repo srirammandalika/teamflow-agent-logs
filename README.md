@@ -1,140 +1,133 @@
 # teamflow-agent-logs
 
----
-
-## Table of Contents
-
-1. [Preference-Based Email Notifications](#1-preference-based-email-notifications)
-2. [Coding Agent (NOVA-3)](#2-coding-agent-nova-3)
+A collaborative task-management workspace powered by **NOVA-3**, an AI coding agent that automates engineering work and keeps the team informed — right from your task board.
 
 ---
 
-## 1. Preference-Based Email Notifications
+## Features
 
-Teammates can opt in to receive email notifications for key task events. Notifications are delivered via **Gmail SMTP** and support two delivery modes: **immediate** and **daily digest**.
+- [Preference-based Email Notifications](#1-preference-based-email-notifications)
+- [Coding Agent (NOVA-3)](#2-coding-agent-nova-3)
 
-### Supported Events
+---
+
+## 1. Preference-based Email Notifications
+
+Teammates can opt in to receive automatic email notifications triggered by activity on the task board. Notifications are delivered via **Gmail SMTP** and can be configured for either **immediate** or **daily digest** delivery.
+
+### Supported trigger events
 
 | Event | Description |
 |---|---|
-| `task_created` | Fired when a new task is created in the project |
-| `task_assigned` | Fired when a task is assigned to a teammate |
-| `subtask_completed` | Fired when a subtask is marked as complete |
+| `task_created` | A new task has been added to the board |
+| `task_assigned` | A task has been assigned to a teammate |
+| `subtask_completed` | A subtask has been marked as complete |
 
-### Delivery Modes
+### Opt-in via `preferences.py`
 
-| Mode | Description |
-|---|---|
-| `immediate` | An email is sent as soon as the event is triggered |
-| `daily_digest` | All events from the day are batched and sent once per day |
-
-### How to Use
-
-#### Step 1 — Opt in via `preferences.py`
-
-Open `preferences.py` and configure your notification preferences. Each teammate sets their own preferences independently:
+Each teammate configures their own notification preferences in `preferences.py`. The available options are:
 
 ```python
 # preferences.py
 
-NOTIFICATION_PREFERENCES = {
-    "jane@example.com": {
-        "enabled": True,
-        "delivery": "immediate",          # "immediate" | "daily_digest"
-        "events": [
-            "task_created",
-            "task_assigned",
-            "subtask_completed",
-        ],
-    },
-    "alex@example.com": {
-        "enabled": True,
-        "delivery": "daily_digest",       # receive one summary email per day
-        "events": [
-            "task_assigned",
-            "subtask_completed",
-        ],
-    },
+EMAIL_NOTIFICATIONS = {
+    "enabled": True,                        # Set to False to opt out entirely
+    "email": "you@example.com",             # Recipient address (must be verified)
+    "delivery": "immediate",                # "immediate" or "daily_digest"
+    "events": [
+        "task_created",
+        "task_assigned",
+        "subtask_completed",
+    ],
 }
 ```
 
-#### Step 2 — Configure Gmail SMTP credentials
+- **`immediate`** — an email is sent as soon as the triggering event occurs.
+- **`daily_digest`** — all events from the day are bundled into a single summary email delivered at the end of the day.
 
-Ensure the following environment variables are set before running the application:
+### How to use
 
-```bash
-GMAIL_SENDER_ADDRESS=your-sender@gmail.com
-GMAIL_APP_PASSWORD=your-app-password        # use a Gmail App Password, not your account password
-```
+1. Open `preferences.py` and set `"enabled": True`.
+2. Enter your verified Gmail recipient address in `"email"`.
+3. Choose your preferred `"delivery"` mode (`"immediate"` or `"daily_digest"`).
+4. List the events you want to be notified about under `"events"`.
+5. Save the file — your preferences take effect immediately for all future events.
 
-> **Tip:** Generate a Gmail App Password at **Google Account → Security → 2-Step Verification → App passwords**.
-
-#### Step 3 — Trigger an event
-
-Events are triggered automatically by normal teamflow actions (creating a task, assigning it, completing a subtask). No extra steps are needed once preferences are saved and credentials are set.
+> **Note:** The sending account must be configured with valid Gmail SMTP credentials (host, port, and an app password) in the project's environment variables. If the recipient address is not verified or credentials are missing, delivery will fail and the agent will log the error for manual follow-up.
 
 ---
 
 ## 2. Coding Agent (NOVA-3)
 
-NOVA-3 is a built-in coding agent that can read a repository, create a dedicated fix branch, apply code changes, and open a Pull Request — all from a task card.
+NOVA-3 is an AI coding agent that lives on the task board. Assign it a task and it will autonomously read the repository, create a dedicated fix branch, apply the requested code change, and open a Pull Request — all without leaving your workflow.
 
-Activity for every run is logged to **`agent-logs/<task_id>.md`** (e.g. `agent-logs/st105.md`).
+### How it works
 
-### How It Works
+1. A teammate creates a task and **assigns it to `NOVA-3`**.
+2. The task card's description begins with `/fix` followed by a plain-English description of the change needed.
+3. NOVA-3 picks up the task, reads the relevant source files, and reasons about the required change.
+4. It creates a new branch named `fix/<short-slug>` off `main`.
+5. It writes the corrected file(s) to that branch with a descriptive commit message.
+6. It opens a **Pull Request** summarising what changed, which lines were affected, and how to test the fix.
+7. Every step is recorded in `agent-logs/<task_id>.md` for full auditability.
 
-```
-Task card  ──►  NOVA-3 picks up the task
-           ──►  Reads the repository
-           ──►  Creates branch  fix/<short-slug>
-           ──►  Applies the change
-           ──►  Opens a Pull Request
-           ──►  Writes agent-logs/<task_id>.md
-```
+### How to use
 
-### How to Use
+1. **Create a new task** on the board.
+2. **Assign it to `NOVA-3`**.
+3. **Write your task card description** using the `/fix` command:
 
-#### Step 1 — Create a task and assign it to NOVA-3
+   ```
+   /fix <plain-English description of the bug or change>
+   ```
 
-In teamflow, create a new task and set the **Assignee** to **NOVA-3**.
+   **Examples:**
 
-#### Step 2 — Write the task card
+   ```
+   /fix the login button does not redirect to the dashboard after a successful auth
+   ```
 
-In the task card's description, use the `/fix` command followed by a plain-English description of the change you need:
+   ```
+   /fix add input validation to the signup form — reject empty username and password fields
+   ```
 
-```
-/fix <description>
-```
+   ```
+   /fix rename the `getUserData` function to `fetchUserProfile` across all files
+   ```
 
-**Examples:**
+4. **Save the task.** NOVA-3 will begin working automatically.
+5. **Review the Pull Request** that NOVA-3 opens on GitHub and merge when satisfied.
+6. **Check the activity log** at `agent-logs/<task_id>.md` to see a timestamped record of everything the agent did.
 
-```
-/fix rename the `user_name` variable to `username` in auth/login.py
-```
+### Activity logs
 
-```
-/fix add input validation to the email field in src/forms/contact.py
-```
-
-```
-/fix update the API base URL from http://localhost:3000 to https://api.example.com in config.js
-```
-
-> **Tips for a good description:**
-> - Reference the exact file path when you know it (e.g. `src/utils/helpers.py`).
-> - Describe *what* should change and *why* if relevant.
-> - One `/fix` command per task card; open separate tasks for unrelated changes.
-
-#### Step 3 — Review the Pull Request
-
-Once NOVA-3 finishes, a Pull Request will appear in your repository targeting `main`. Review the diff, request changes if needed, and merge when satisfied.
-
-#### Step 4 — Check the agent log
-
-The full activity log for the run is written to:
+Every task handled by NOVA-3 produces a Markdown log file at:
 
 ```
 agent-logs/<task_id>.md
 ```
 
-For example, if your task ID is `st121`, check `agent-logs/st121.md` for a step-by-step record of what NOVA-3 read, changed, and committed.
+Each entry includes a UTC timestamp and a summary of the action taken or any errors encountered. Example:
+
+```markdown
+## 2026-05-05T10:45:23Z
+
+Complete: Fixed redirect logic in auth controller — branch fix/login-redirect created,
+changes applied to src/controllers/auth.js, Pull Request #42 opened.
+```
+
+If something goes wrong (e.g. the description is ambiguous or a required file cannot be found), NOVA-3 logs the issue and flags the task for manual follow-up.
+
+---
+
+## Repository structure
+
+```
+teamflow-agent-logs/
+├── README.md          # This file
+├── preferences.py     # Per-teammate notification preferences
+└── agent-logs/        # Timestamped activity logs for every NOVA-3 task
+    ├── st105.md
+    ├── st106.md
+    └── ...
+```
