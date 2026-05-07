@@ -1,10 +1,8 @@
 # Environment variables
 .env
-.env.*
 
 # Python cache
 __pycache__/
-*.py[cod]
 
-# macOS
+# macOS metadata
 .DS_Store
